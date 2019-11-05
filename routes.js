@@ -50,7 +50,7 @@ module.exports = function(app) {
       }
     } else {
       res.status(302);
-      res.send(result);
+      res.send(data);
     }
   })
 
@@ -59,8 +59,15 @@ module.exports = function(app) {
       if(err)
         console.log(err);
 
+      console.log(data);
       res.send(data);
     })
+  })
+
+  app.put('/updateSchedule', (req, res)=>{
+    connection.query('INSERT INTO students (schedule) VALUES ("' + req.body.schedule + '") WHERE umid=' + req.body.umid, (err, data) => {
+      if(err) console.log(err);
+    });
   })
 };
 
