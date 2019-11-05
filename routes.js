@@ -20,6 +20,7 @@ module.exports = function(app) {
   app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*"); 
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "*");
     next();
   });
 
@@ -38,6 +39,7 @@ module.exports = function(app) {
     let timeframe = await selectAllByTimeFrame(req.body.scheduled);
     console.log('TimeFrame: ' + timeframe);
 
+    console.log('Data: ' + JSON.stringify(data));
     if(data.length < 1 || data == undefined){
       let isSuccess = await insertAllIntoStudents(req.body);
       if(isSuccess){
@@ -64,9 +66,13 @@ module.exports = function(app) {
     })
   })
 
-  app.put('/updateSchedule', (req, res)=>{
-    connection.query('INSERT INTO students (schedule) VALUES ("' + req.body.schedule + '") WHERE umid=' + req.body.umid, (err, data) => {
+  app.post('/updateSchedule', (req, res)=>{
+    connection.query("UPDATE students SET scheduled='" + req.body.schedule + "' WHERE (umid='" + req.body.umid + "')", (err, data) => {
       if(err) console.log(err);
+
+      console.log(req.body.schedule);
+      console.log(data);
+      res.send(data)
     });
   })
 };
