@@ -10,7 +10,7 @@ const connection = mysql.createConnection({
 
 connection.connect((err)=>{
 (err) ? console.log(err) : console.log(connection);
-})
+});
 
 module.exports = function(app) {
 
@@ -169,13 +169,10 @@ function incrementOccupants(umid){
 
     let occupants = await selectAllTimeSlotsByTimeFrame(timeframe);
     console.log(occupants);
-    if (occupants < 6){
+    if (occupants < 6)
       occupants++;
 
-      resolve(await updateTimeSlotsByTimeFrame(occupants, timeframe));
-    } else {
-      reject("error");
-    }
+    resolve(await updateTimeSlotsByTimeFrame(occupants, timeframe));
   })
 }
 
