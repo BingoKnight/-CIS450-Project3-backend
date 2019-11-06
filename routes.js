@@ -24,6 +24,13 @@ module.exports = function(app) {
     next();
   });
 
+  app.get('/getStudents', (req, res) => {
+    connection.query('SELECT * FROM students', (err, data) => {
+      if(err) console.log(err);
+      res.send(data);
+    })
+  })
+
   app.get('/getTimeSlots', (req, res) =>{
     connection.query('SELECT * FROM time_slots', (err, data)=>{
       if(err)
@@ -42,9 +49,13 @@ module.exports = function(app) {
     console.log('Data: ' + JSON.stringify(data));
     if(data.length < 1 || data == undefined){
       let isSuccess = await insertAllIntoStudents(req.body);
-      if(isSuccess){
+      let validOccupants = await decrementOccupants(req.body.scheduled);
+      if(isSuccess && validOccupants){
         res.status(200);
         res.send('success');
+      } else if(!validOccupants){
+        res.status(400);
+        res.send('max occupancy at selected timeframe');
       } else{
         console.log(err);
         res.status(500);
@@ -75,6 +86,13 @@ module.exports = function(app) {
       res.send(data)
     });
   })
+
+  app.post('/removeSchedule', async (req, res)=>{
+    let umid = req.body.umid;
+
+    await incrementOccupants(umid);
+    res.send(await removeSchedule(umid));
+  })
 };
 
 function selectAllByTimeFrame(timeframe){
@@ -101,6 +119,75 @@ function insertAllIntoStudents(request){
       
       if(err) reject(false);
       resolve(true);
+    })
+  })
+}
+
+function selectAllTimeSlotsByTimeFrame(timeframe){
+  return new Promise((resolve, reject) => {
+    connection.query('SELECT * FROM time_slots WHERE timeframe="' + timeframe + '"', (err, data) =>{
+      if(err){
+        console.log(err);
+        reject(err);
+      }
+
+      resolve(data[0].occupants);
+    });
+  })
+}
+
+function updateTimeSlotsByTimeFrame(occupants, timeframe){
+  return new Promise((resolve, reject) => {
+    console.log('occupants: ' + occupants + '; timeframe: ' + timeframe);
+    connection.query('UPDATE time_slots SET occupants=' + occupants + ' WHERE (timeframe="' + timeframe + '");', (err, data) =>{
+      if(err){
+        console.log(err);
+        reject(false);
+      }
+      resolve(true);
+    })
+  })
+}
+
+function decrementOccupants(timeframe){
+  return new Promise(async (resolve, reject) => {
+    let occupants = await selectAllTimeSlotsByTimeFrame(timeframe);
+    if(occupants === 0){
+      reject(false);
+    } else {
+      occupants--;
+
+      resolve(await updateTimeSlotsByTimeFrame(occupants, timeframe));
+    }
+  })
+}
+
+function incrementOccupants(umid){
+  return new Promise(async (resolve, reject) => {
+    let record = await selectAllByUmid(umid);
+    let timeframe = record[0].scheduled;
+
+    let occupants = await selectAllTimeSlotsByTimeFrame(timeframe);
+    console.log(occupants);
+    if (occupants < 6){
+      occupants++;
+
+      resolve(await updateTimeSlotsByTimeFrame(occupants, timeframe));
+    } else {
+      reject("error");
+    }
+  })
+}
+
+function removeSchedule(umid){
+  return new Promise(async (resolve, reject) =>{
+    connection.query("DELETE FROM cis435_schema.students WHERE umid='" + umid + "'", (err, data) =>{
+      if(err){
+        console.log(err);
+        reject(err);
+      }
+      
+      resolve(data);
     })
   })
 }
